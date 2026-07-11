@@ -4,7 +4,7 @@ This repository serves as a centralized backup system for my active development 
 
 ---
 
-## PC Path:** `F:\Aviyaan\Aviyaan_backups` *(Recommended to keep paths identical to prevent broken relative file links)*
+# PC Path:** `F:\A\A_backups` *(Recommended to keep paths identical to prevent broken relative file links)*
 
 ### Project Stack
 *   **IDE:** Microsoft Visual Studio
