@@ -1,12 +1,10 @@
-# Aviyaan_backups
+# Blazorapp_practise_backups
 
-This repository serves as a centralized backup system for my active development files, allowing me to sync, download, and maintain code continuity between my **Work PC** and **Home Personal PC**.
+This repository serves as a centralized backup system for my active development files, allowing me to sync, download, and maintain code continuity.
 
 ---
 
-### Workspace Paths
-*   **Work PC Path:** `D:\Sohan\ `
-*   **Home PC Path:** `F:\Aviyaan\Aviyaan_backups` *(Recommended to keep paths identical to prevent broken relative file links)*
+## PC Path:** `F:\Aviyaan\Aviyaan_backups` *(Recommended to keep paths identical to prevent broken relative file links)*
 
 ### Project Stack
 *   **IDE:** Microsoft Visual Studio
