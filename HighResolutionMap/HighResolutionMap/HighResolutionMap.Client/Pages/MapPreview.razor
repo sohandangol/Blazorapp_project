@@ -49,11 +49,20 @@
     {
         if (_jsModule is not null)
         {
-            // Call the JS function to fetch live coordinates from the hardware canvas
-            var extent = await _jsModule.InvokeAsync<MapExtent>("getBounds", Id);
 
-            if (extent is not null && OnBoundsCaptured.HasDelegate)
+            var bounds = await _jsModule.InvokeAsync<double[]>("getMapBounds", Id);
+
+            if (bounds != null && bounds.Length == 4)
             {
+                var extent = new MapExtent
+                    {
+                        MapId = Id,
+                        MinLng = bounds[0],
+                        MinLat = bounds[1],
+                        MaxLng = bounds[2],
+                        MaxLat = bounds[3]
+                    };
+
                 await OnBoundsCaptured.InvokeAsync(extent);
             }
         }

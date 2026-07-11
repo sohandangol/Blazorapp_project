@@ -53,14 +53,22 @@ Welcome to your new app.
                             </div>
                         </div>
                         
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-success btn-block" disabled>
-                                Generate High-Res PDF (300 DPI)
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" disabled>
-                                Download High-Res JPEG
-                            </button>
+                        <div class="form-group mt-3">
+                            <label>Select Print Quality (DPI):</label>
+                            <select @bind="_selectedDpi" class="form-select">
+                                <option value="150">150 DPI (Standard Quality)</option>
+                                <option value="200">200 DPI (Medium Quality)</option>
+                                <option value="300">300 DPI (High-Res Quality)</option>
+                                <option value="400">400 DPI (Ultra-Sharp)</option>
+                            </select>
                         </div>
+
+                        <button class="btn btn-success mt-3"
+                                @onclick="TriggerHighDpiExport"
+                                disabled="@(_capturedExtent == null)">
+                            Generate @_selectedDpi DPI Print
+                        </button>
+
                     }
                     else
                     {
@@ -76,11 +84,31 @@ Welcome to your new app.
 
 
 @code {
+    // Inject JSRuntime so we can send our DPI configurations to mapInterop.js
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    
     private MapExtent? _capturedExtent;
+    private string _selectedDpi = "300"; // Default selection string
 
     private void HandleBoundsCaptured(MapExtent extent)
     {
         _capturedExtent = extent;
         StateHasChanged(); // Force Blazor to update the view immediately
+    }
+    
+    private async Task TriggerHighDpiExport()
+    {
+        if (_capturedExtent == null) return;
+
+        int dpi = int.Parse(_selectedDpi);
+
+        // Standard physical printable landscape dimensions for an A4 sheet (11.69 x 8.27 inches)
+        double widthInches = 11.69;
+        double heightInches = 8.27;
+
+        await JSRuntime.InvokeVoidAsync("generateHiddenHighDpiMap",
+            "map-container-id", widthInches, heightInches, dpi,
+            _capturedExtent.MinLng, _capturedExtent.MinLat,
+            _capturedExtent.MaxLng, _capturedExtent.MaxLat);
     }
 }

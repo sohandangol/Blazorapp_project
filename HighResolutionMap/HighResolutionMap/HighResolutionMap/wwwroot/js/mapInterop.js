@@ -11,17 +11,56 @@ export function initializeMap(elementId, lng, lat, zoom) {
         activeMaps[elementId].remove();
     }
 
+
+    
     // Create the interactive MapLibre instance using the global 'maplibregl' object
     const map = new maplibregl.Map({
         container: elementId,
 
-        // Using an open-source demo tile style. Can replace this with own local GeoServer style JSON        
-        style: 'https://tiles.openfreemap.org/styles/liberty',
+        // This is an open-source Vector tile style. Can replace this with other tiles.
+        style: 'https://tiles.openfreemap.org/styles/bright',
 
         center: [lng, lat],
         zoom: zoom,
-        interactive: true // This guarantees pan, drag, and zoom work out of the box
+        interactive: true,
+
+        fadeDuration: 0,
     });
+    
+
+    // This below is the raster tiles style
+   /*
+    const map = new maplibregl.Map({
+        container: elementId,
+
+        style: {
+            "version": 8,
+            "sources": {
+                "raster-tiles": {
+                    "type": "raster",
+
+                    // URL to your raster tiles (e.g., OpenStreetMap standard raster tiles)
+                    "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],                    
+                    "tileSize": 256,     // Or 512 for sharper raster tiles
+                    "minzoom": 0,
+                    "maxzoom": 19,
+                    "attribution": "© OpenStreetMap contributors",
+                }
+            },
+            "layers": [
+                {
+                    "id": "simple-tiles",
+                    "type": "raster",
+                    "source": "raster-tiles",
+                    "minzoom": 0,
+                    "maxzoom": 19
+                }
+            ]
+        },
+        center: [lng, lat],
+        zoom: zoom
+    }); 
+    */
 
     // Add standard interactive navigation controls (Zoom +/- and compass tilt buttons)
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
@@ -38,12 +77,13 @@ export function getBounds(elementId) {
     if (!map) return null;
 
     const bounds = map.getBounds();
-    return {
-        minLng: bounds.getWest(),
-        minLat: bounds.getSouth(),
-        maxLng: bounds.getEast(),
-        maxLat: bounds.getNorth()
-    };
+    // Returns [minLng, minLat, maxLng, maxLat] matching the exact array order above
+    return [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth()
+    ];
 }
 
 /**
