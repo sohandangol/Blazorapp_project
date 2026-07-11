@@ -1,4 +1,4 @@
-# Blazorapp_practise_backups
+# Blazorapp_project_backups
 
 This repository serves as a centralized backup system for my active development files, allowing me to sync, download, and maintain code continuity.
 
