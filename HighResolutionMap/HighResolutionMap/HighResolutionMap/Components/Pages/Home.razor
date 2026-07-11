@@ -1,0 +1,84 @@
+﻿@page "/"
+@using HighResolutionMap.Client.Models
+@using HighResolutionMap.Client.Pages
+
+<PageTitle>High Resolution Map Downloads</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-2">Print Layout Preview</h1>
+            <p class="text-muted mb-4">Pan and zoom the map below to choose your printing area, then capture its boundaries.</p>
+        </div>
+    </div>
+
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Render our custom modular map component -->
+            <MapPreview
+                Longitude="85.3240" 
+                Latitude="27.7172" 
+                Zoom="13" 
+                HeightPixels="550"
+                OnBoundsCaptured="HandleBoundsCaptured" />
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-dark text-white font-weight-bold">
+                    Export Configuration
+                </div>
+                <div class="card-body">
+                    @if (_capturedExtent is not null)
+                    {
+                        <div class="alert alert-success">
+                            <h6 class="alert-heading font-weight-bold mb-2">✓ Extent Captured Successfully</h6>
+                            <small class="text-muted d-block mb-1">Ready for High-DPI Upscaling Engine</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold small text-uppercase">Bounding Box Coordinates:</label>
+                            <div class="bg-light p-2 rounded font-monospace small border">
+                                <div><strong>Min Lng:</strong> @_capturedExtent.MinLng</div>
+                                <div><strong>Min Lat:</strong> @_capturedExtent.MinLat</div>
+                                <div><strong>Max Lng:</strong> @_capturedExtent.MaxLng</div>
+                                <div><strong>Max Lat:</strong> @_capturedExtent.MaxLat</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success btn-block" disabled>
+                                Generate High-Res PDF (300 DPI)
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                Download High-Res JPEG
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted my-5">
+                            <p class="mb-0">Please interact with the map and click <strong>"Capture Map Extent"</strong> to configure your print boundaries.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private MapExtent? _capturedExtent;
+
+    private void HandleBoundsCaptured(MapExtent extent)
+    {
+        _capturedExtent = extent;
+        StateHasChanged(); // Force Blazor to update the view immediately
+    }
+}

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HighResolutionMap/HighResolutionMap.Client/HighResolutionMap.Client.csproj" />
+  <Project Path="HighResolutionMap/HighResolutionMap/HighResolutionMap.csproj" />
+</Solution>
