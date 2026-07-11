@@ -5,26 +5,28 @@ let activeMaps = {};
  * Initializes a fully interactive MapLibre map instance inside a given HTML element.
  */
 export function initializeMap(elementId, lng, lat, zoom) {
-    // 1. Prevent memory leaks by cleaning up an existing map on this element if it exists
+
+    // Prevent memory leaks by cleaning up an existing map on this element if it exists
     if (activeMaps[elementId]) {
         activeMaps[elementId].remove();
     }
 
-    // 2. Create the interactive MapLibre instance using the global 'maplibregl' object
+    // Create the interactive MapLibre instance using the global 'maplibregl' object
     const map = new maplibregl.Map({
         container: elementId,
-        // Using an open-source demo tile style. Can replace this with own local GeoServer style JSON
-        style: 'https://demotiles.maplibre.org/style.json',
+
+        // Using an open-source demo tile style. Can replace this with own local GeoServer style JSON        
+        style: 'https://tiles.openfreemap.org/styles/liberty',
 
         center: [lng, lat],
         zoom: zoom,
         interactive: true // This guarantees pan, drag, and zoom work out of the box
     });
 
-    // 3. Add standard interactive navigation controls (Zoom +/- and compass tilt buttons)
+    // Add standard interactive navigation controls (Zoom +/- and compass tilt buttons)
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    // 4. Save this specific instance so we can query its coordinates later
+    // Save this specific instance so we can query its coordinates later
     activeMaps[elementId] = map;
 }
 
