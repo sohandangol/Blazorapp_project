@@ -86,6 +86,9 @@ export function getBounds(elementId) {
     ];
 }
 
+window.getBounds = getBounds;
+
+
 /**
  * Safely removes the map from memory when the user leaves the page.
  */
@@ -95,3 +98,79 @@ export function disposeMap(elementId) {
         delete activeMaps[elementId];
     }
 }
+
+
+/**
+ * A js bridge function controlled completely by C# parameters.
+ * Creates an un-rendered high-res canvas in the background and returns a JPEG format base64 string.
+ */
+window.generateHiddenCanvasBridge = function (sourceId, width, height, scale, minLng, minLat, maxLng, maxLat) {
+    return new Promise((resolve, reject) => {
+        try {
+            // 1. Setup an isolated container far off the visible layout tree area
+            const hiddenContainer = document.createElement('div');
+            Object.assign(hiddenContainer.style, {
+                position: 'absolute',
+                left: '-9999px',
+                top: '-9999px',
+                width: width + 'px',
+                height: height + 'px'
+            });
+            document.body.appendChild(hiddenContainer);
+
+            // 2. Temporarily hijack the browser device pixel ratio to force ultra-sharp rendering density
+            const originalDPR = window.devicePixelRatio;
+            Object.defineProperty(window, 'devicePixelRatio', { get: () => scale, configurable: true });
+
+            // 3. Initialize a silent background MapLibre sandbox clone
+            const hiddenMap = new maplibregl.Map({
+                container: hiddenContainer,
+                style: activeMaps[sourceId].getStyle(), // Automatically grabs whichever style (vector or raster comment out block) you have running!
+                interactive: false,
+                fadeDuration: 0,
+                preserveDrawingBuffer: true, // Absolutely mandatory for reading raw canvas data blocks
+                trackResize: false
+            });
+
+            // 4. Tight-fit the map canvas boundaries down onto the user's captured coordinates
+            hiddenMap.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 0, animate: false });
+
+            // 5. Once the canvas finishes drawing all background tiles completely, grab the bytes
+            hiddenMap.once('idle', () => {
+                try {
+                    const canvas = hiddenMap.getCanvas();
+
+                    // Export directly to high-quality image/jpeg format (0.95 quality) back to C#
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                    resolve(dataUrl);
+                } catch (err) {
+                    reject(err);
+                } finally {
+                    // 6. Memory Cleanup: Wipe out background footprint elements immediately
+                    Object.defineProperty(window, 'devicePixelRatio', { get: () => originalDPR, configurable: true });
+                    hiddenMap.remove();
+                    hiddenContainer.remove();
+                }
+            });
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
+
+/**
+ * Standard Microsoft Blazor stream reference file saver utility
+ */
+window.BlazorDownloadFileBridge = async (fileName, contentStreamReference) => {
+    const buffer = await contentStreamReference.arrayBuffer();
+    const blob = new Blob([buffer], { type: 'image/jpeg' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+
+    URL.revokeObjectURL(url);
+    a.remove();
+};

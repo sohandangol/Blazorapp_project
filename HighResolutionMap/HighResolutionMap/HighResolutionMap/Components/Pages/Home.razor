@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using HighResolutionMap.Client.Models
 @using HighResolutionMap.Client.Pages
+@using Microsoft.JSInterop
+@using System.IO
 
 <PageTitle>High Resolution Map Downloads</PageTitle>
 
@@ -86,7 +88,7 @@ Welcome to your new app.
 @code {
     // Inject JSRuntime so we can send our DPI configurations to mapInterop.js
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-    
+
     private MapExtent? _capturedExtent;
     private string _selectedDpi = "300"; // Default selection string
 
@@ -95,20 +97,66 @@ Welcome to your new app.
         _capturedExtent = extent;
         StateHasChanged(); // Force Blazor to update the view immediately
     }
-    
+
     private async Task TriggerHighDpiExport()
     {
+
+        // Math and layout constraints managed purely inside C#
         if (_capturedExtent == null) return;
 
         int dpi = int.Parse(_selectedDpi);
 
-        // Standard physical printable landscape dimensions for an A4 sheet (11.69 x 8.27 inches)
+        // Standard A4 sheet (11.69 x 8.27 inches) printable landscape dimensions
         double widthInches = 11.69;
         double heightInches = 8.27;
 
-        await JSRuntime.InvokeVoidAsync("generateHiddenHighDpiMap",
-            "map-container-id", widthInches, heightInches, dpi,
-            _capturedExtent.MinLng, _capturedExtent.MinLat,
-            _capturedExtent.MaxLng, _capturedExtent.MaxLat);
+        int targetedWidthPixels = (int)(widthInches * dpi);
+        int targetedHeightPixels = (int)(heightInches * dpi);
+
+        // 96 DPI is standard Map baseline of web browser window rendering scale
+        double devicePixelRatioScale = dpi / 96.0;
+
+        try
+        {
+            // C# comnands JS bridge layer to build hidden cnavas in backend
+            string rawDataUrl = await JSRuntime.InvokeAsync<string>(
+                "generateHiddenCanvasBridge",
+                _capturedExtent.MapId,
+                targetedWidthPixels,
+                targetedHeightPixels,
+                devicePixelRatioScale,
+                _capturedExtent.MinLng,
+                _capturedExtent.MinLat,
+                _capturedExtent.MaxLng,
+                _capturedExtent.MaxLat
+            );
+
+            if (!string.IsNullOrEmpty(rawDataUrl))
+            {
+                // Process the Base64 image data payload entirely inside C#
+                string base64Data = rawDataUrl.Contains(",")
+                    ? rawDataUrl.Split(',')[1]
+                    : rawDataUrl;
+
+                // Transform string matrix into a pure native .NET Byte Array
+                byte[] imageBytes = Convert.FromBase64String(base64Data);
+
+                // Package the native C# bytes into a secure Microsoft stream framework reference
+                using var streamRef = new DotNetStreamReference(new MemoryStream(imageBytes));
+
+                // Push down to your local computer's system download files directory
+                await JSRuntime.InvokeVoidAsync(
+                    "BlazorDownloadFileBridge",
+                    $"high_res_map_{dpi}dpi_{DateTime.Now:yyyyMMddHHmmss}.jpg",
+                    streamRef
+                );
+            }
+        }
+
+        catch (Exception ex)
+        {
+            // Log formatting catches errors cleanly inside your server console instance
+            Console.WriteLine($"C# Export Pipeline Failure: {ex.Message}");
+        }
     }
 }

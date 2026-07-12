@@ -50,7 +50,7 @@
         if (_jsModule is not null)
         {
 
-            var bounds = await _jsModule.InvokeAsync<double[]>("getMapBounds", Id);
+            var bounds = await _jsModule.InvokeAsync<double[]>("getBounds", Id);
 
             if (bounds != null && bounds.Length == 4)
             {
