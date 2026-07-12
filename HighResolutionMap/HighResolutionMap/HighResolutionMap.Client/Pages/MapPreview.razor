@@ -34,7 +34,10 @@
     // OnAfterRenderAsync is the standard lifecycle method where the browser DOM is guaranteed to be ready
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // Use the module reference rather than firstRender. With InteractiveAuto, the component can
+        // render first on the server and then on WebAssembly, so the JS module must be re-imported
+        // on the client (IJSObjectReference is not transferred across the server/WASM boundary).
+        if (_jsModule is null)
         {
             // Dynamically import your mapInterop.js file as an isolated module
             _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(

@@ -1,19 +1,27 @@
 ﻿// A private object to store interactive map instances by their element IDs
 let activeMaps = {};
 
+// MapLibre is loaded by the UMD script in App.razor as globalThis.maplibregl.
+// An ES module cannot see properties of globalThis as bare variables, so import it explicitly.
+const maplibregl = globalThis.maplibregl;
+if (!maplibregl) {
+    throw new Error('MapLibre library not loaded. Ensure the maplibre-gl.js script is loaded before the mapInterop module.');
+}
+
 /**
  * Initializes a fully interactive MapLibre map instance inside a given HTML element.
  */
 export function initializeMap(elementId, lng, lat, zoom) {
+    if (!elementId) {
+        throw new Error('initializeMap requires a non-empty elementId.');
+    }
 
     // Prevent memory leaks by cleaning up an existing map on this element if it exists
     if (activeMaps[elementId]) {
         activeMaps[elementId].remove();
     }
 
-
-    
-    // Create the interactive MapLibre instance using the global 'maplibregl' object
+    // Create the interactive MapLibre instance using the global library object
     const map = new maplibregl.Map({
         container: elementId,
 
@@ -74,7 +82,9 @@ export function initializeMap(elementId, lng, lat, zoom) {
  */
 export function getBounds(elementId) {
     const map = activeMaps[elementId];
-    if (!map) return null;
+    if (!map) {
+        throw new Error(`No map found for elementId '${elementId}'. initializeMap may not have completed or the Id does not match.`);
+    }
 
     const bounds = map.getBounds();
     // Returns [minLng, minLat, maxLng, maxLat] matching the exact array order above
