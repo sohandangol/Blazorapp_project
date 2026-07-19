@@ -210,7 +210,7 @@ export function initializeMapWithMultipleLayers(elementId, lng, lat, zoom, layer
 
     const map = new maplibregl.Map({
         container: elementId,
-        style: 'https://tiles.openfreemap.org/styles/bright',
+        // style: 'https:tiles.openfreemap.org/styles/bright',
         center: [lng, lat],
         zoom: zoom,
         interactive: true,
