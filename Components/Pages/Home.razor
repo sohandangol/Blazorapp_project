@@ -1,0 +1,133 @@
+﻿@page "/"
+@using Models;
+@using Microsoft.JSInterop
+
+
+<PageTitle>High Resolution Map Downloads</PageTitle>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-2">Print Layout Preview</h1>
+            <p class="text-muted mb-4">Pan and zoom the map below to choose your printing area, then capture its boundaries.</p>
+        </div>
+    </div>
+
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Render our custom modular map component, Cooridnates display Default Nepal map in Canvas -->
+            <_MapPreview 
+                
+                @ref="_mapPreviewRef"
+                Id="map-preview-main"
+
+                Longitude="84.12780" 
+                Latitude="28.3951"  
+                Zoom="6"
+                
+                HeightPixels="550"
+                OnBoundsCaptured="HandleBoundsCaptured" />
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-dark text-white font-weight-bold">
+                    Export Configuration
+                </div>
+                <div class="card-body">
+                    @if (_capturedExtent is not null)
+                    {
+                        <div class="alert alert-success">
+                            <h6 class="alert-heading font-weight-bold mb-2">✓ Extent Captured Successfully</h6>
+                            <small class="text-muted d-block mb-1">Ready for High-DPI Upscaling Engine</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold small text-uppercase">Bounding Box Coordinates:</label>
+                            <div class="bg-light p-2 rounded font-monospace small border">
+                                <div><strong>Min Lng:</strong> @_capturedExtent.MinLng</div>
+                                <div><strong>Min Lat:</strong> @_capturedExtent.MinLat</div>
+                                <div><strong>Max Lng:</strong> @_capturedExtent.MaxLng</div>
+                                <div><strong>Max Lat:</strong> @_capturedExtent.MaxLat</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label>Select Print Quality (DPI):</label>
+                            <select @bind="_selectedDpi" class="form-select">
+                                
+                                <option value="150">150 DPI (Standard Quality)</option>
+                                <option value="200">200 DPI (Medium Quality)</option>
+                                <option value="300">300 DPI (High-Res Quality)</option>
+                                <option value="400">400 DPI (Ultra-Sharp)</option>
+
+                            </select>
+                        </div>
+
+                        <button class="btn btn-success mt-3"
+                                @onclick="TriggerHighDpiExport"
+                                disabled="@(_capturedExtent == null)">
+                            Generate @_selectedDpi DPI Print
+                        </button>
+
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted my-5">
+                            <p class="mb-0">Please interact with the map and click <strong>"Capture Map Extent"</strong> to configure your print boundaries.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    // Inject JSRuntime so we can send our DPI configurations to mapInterop.js
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
+    private _MapPreview? _mapPreviewRef;
+
+    private MapExtent? _capturedExtent;
+    private string _selectedDpi = "300"; // Default selection string
+
+    private void HandleBoundsCaptured(MapExtent extent)
+    {
+        _capturedExtent = extent;
+        StateHasChanged(); // Force Blazor to update the view immediately
+    }
+
+    private async Task TriggerHighDpiExport()
+    {
+        // 1. Safely evaluate the reference object instance type to bypass SSR boundaries
+        if (_capturedExtent == null || _mapPreviewRef == null )
+            return;
+
+        // 2. Compute parameters purely in .NET
+        int dpi = int.Parse(_selectedDpi);
+
+        double devicePixelRatioScale = dpi / 96.0;
+
+        // int targetedWidthPixels = (int)(_capturedExtent.ContainerWidth * devicePixelRatioScale);
+        // int targetedHeightPixels = (int)(_capturedExtent.ContainerHeight * devicePixelRatioScale);
+       
+
+        // dynamic activeMap = _mapPreviewRef;
+
+        // 3. Delegate the complex canvas generation & download straight to the child module
+        // await activeMap.ExecuteHighDpiRender( 
+        await _mapPreviewRef.ExecuteHighDpiRender(
+       
+            _capturedExtent.MapId,
+            (int)_capturedExtent.ContainerWidth,
+            (int)_capturedExtent.ContainerHeight,
+            devicePixelRatioScale,
+            dpi,
+            _capturedExtent
+
+        );
+    }
+}
+    

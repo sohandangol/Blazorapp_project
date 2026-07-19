@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "6e2ND20kqc4=",
+  "success": true,
+  "projectFilePath": "F:\\Aviyaan\\Assignments\\DPIMapPrinting\\WebAppPrinting\\WebAppPrinting.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ADMIN\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.9\\microsoft.aspnetcore.app.internal.assets.10.0.9.nupkg.sha512"
+  ],
+  "logs": []
+}

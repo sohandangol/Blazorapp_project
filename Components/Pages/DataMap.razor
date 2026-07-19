@@ -1,0 +1,210 @@
+﻿@* This file handles high-resolution vector layout prints with layer visibility settings *@
+@page "/datamap"
+@rendermode InteractiveServer
+@using Microsoft.JSInterop
+
+
+<PageTitle>High Resolution Map Downloads</PageTitle>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-2">Print Layout Preview</h1>
+            <p class="text-muted mb-4">Pan and zoom the map below to choose your printing area, toggle your vector layers, then capture its boundaries.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Interactive Map Viewport -->
+        <div class="col-lg-8">
+            @if (_layers.Any())
+            {
+                <_DataMapPreview 
+                    @ref="_mapPreviewRef"
+                                           Id="ktm-multi-map"
+                                           Longitude="85.3240"
+                                           Latitude="27.7172"
+                                           Zoom="12"
+                                           HeightPixels="550"
+                                           Layers="@_layers"
+                                           OnBoundsCaptured="HandleBoundsCaptured" />
+            }
+            else
+            {
+                <div class="alert alert-info">Loading vector assets from storage...</div>
+            }
+        </div>
+
+        <!-- Sidebar Engine Panel -->
+        <div class="col-lg-4">
+            <!-- New Interactive Layer Control Panel -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white font-weight-bold">
+                    Interactive Layers
+                </div>
+                <div class="card-body">
+                    @foreach (var layer in _layers)
+                    {
+                        <div class="form-check form-switch d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                            <div>
+                                <span class="badge me-2" style="background-color: @layer.Color; width: 12px; height: 12px; display: inline-block; border-radius: 50%;"></span>
+                                <label class="form-check-label font-weight-bold" for="@layer.Id">@layer.DisplayName</label>
+                            </div>
+                            <input class="form-check-input" type="checkbox" role="switch" id="@layer.Id"
+                                   checked="@layer.IsVisible"
+                                   @onchange="(e) => OnToggleLayer(layer, e)" />
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Export Management Box -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white font-weight-bold">
+                    Export Configuration
+                </div>
+                <div class="card-body">
+                    @if (_capturedExtent is not null)
+                    {
+                        <div class="alert alert-success">
+                            <h6 class="alert-heading font-weight-bold mb-2">✓ Extent Captured Successfully</h6>
+                            <small class="text-muted d-block mb-1">Ready for High-DPI Upscaling Engine</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold small text-uppercase">Bounding Box Coordinates:</label>
+                            <div class="bg-light p-2 rounded font-monospace small border">
+                                <div><strong>Min Lng:</strong> @_capturedExtent.MinLng</div>
+                                <div><strong>Min Lat:</strong> @_capturedExtent.MinLat</div>
+                                <div><strong>Max Lng:</strong> @_capturedExtent.MaxLng</div>
+                                <div><strong>Max Lat:</strong> @_capturedExtent.MaxLat</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <label>Select Print Quality (DPI):</label>
+                            <select @bind="_selectedDpi" class="form-select">
+                                <option value="150">150 DPI (Standard Quality)</option>
+                                <option value="200">200 DPI (Medium Quality)</option>
+                                <option value="300">300 DPI (High-Res Quality)</option>
+                                <option value="400">400 DPI (Ultra-Sharp)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-success w-100 mt-3"
+                                @onclick="TriggerHighDpiExport"
+                                disabled="@(_capturedExtent == null)">
+                            Generate @_selectedDpi DPI Print
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted my-5">
+                            <p class="mb-0">Please interact with the map and click <strong>"Capture Map Extent"</strong> to configure your print boundaries.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
+    // FIXED: Must match the custom Multi-Layer preview component type precisely!
+    private _DataMapPreview? _mapPreviewRef;
+
+    private MapExtent? _capturedExtent;
+    private string _selectedDpi = "300";
+
+    // FIXED: Properly maintain a list containing all loaded data layer objects
+    private List<MapLayerItem> _layers = new();
+
+    protected override void OnInitialized()
+    {
+        var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "Data", "MapLayers");
+
+        // Load Schools Layer
+        var pathSchools = Path.Combine(baseDir, "KTM_schools.geojson");
+        if (File.Exists(pathSchools))
+        {
+            _layers.Add(new MapLayerItem
+            {
+                Id = "schools",
+                DisplayName = "Kathmandu Schools",
+                RawGeoJson = File.ReadAllText(pathSchools),
+                LayerType = "circle",
+                Color = "#ff5722",
+                IsVisible = true
+            });
+        }
+
+        // Load Hospitals Layer
+        var pathHospitals = Path.Combine(baseDir, "KTM_hospitals_and_clinic.geojson");
+        if (File.Exists(pathHospitals))
+        {
+            _layers.Add(new MapLayerItem
+            {
+                Id = "hospitals",
+                DisplayName = "Hospitals & Clinics",
+                RawGeoJson = File.ReadAllText(pathHospitals),
+                LayerType = "circle",
+                Color = "#e91e63",
+                IsVisible = true
+            });
+        }
+
+        // Load Roads Layer
+        var pathRoads = Path.Combine(baseDir, "KTMroad_geojson_form_OverpassTurbo.geojson");
+        if (File.Exists(pathRoads))
+        {
+            _layers.Add(new MapLayerItem
+            {
+                Id = "roads",
+                DisplayName = "Kathmandu Road Network",
+                RawGeoJson = File.ReadAllText(pathRoads),
+                LayerType = "line",
+                Color = "#2196f3",
+                IsVisible = true
+            });
+        }
+    }
+
+    private void HandleBoundsCaptured(MapExtent extent)
+    {
+        _capturedExtent = extent;
+        StateHasChanged();
+    }
+
+    // Handles checkbox clicks and updates the map dynamically using JS interop
+    private async Task OnToggleLayer(MapLayerItem layer, ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked && _mapPreviewRef != null)
+        {
+            layer.IsVisible = isChecked;
+            if (_mapPreviewRef.ModuleInstance != null)
+            {
+                await _mapPreviewRef.ModuleInstance.InvokeVoidAsync("toggleLayerVisibility", "ktm-multi-map", layer.Id, isChecked);
+            }
+        }
+    }
+
+    private async Task TriggerHighDpiExport()
+    {
+        if (_capturedExtent == null || _mapPreviewRef == null)
+            return;
+
+        int dpi = int.Parse(_selectedDpi);
+        double devicePixelRatioScale = dpi / 96.0;
+
+        await _mapPreviewRef.ExecuteHighDpiRender(
+            _capturedExtent.MapId,
+            (int)_capturedExtent.ContainerWidth,
+            (int)_capturedExtent.ContainerHeight,
+            devicePixelRatioScale,
+            dpi,
+            _capturedExtent
+        );
+    }
+}

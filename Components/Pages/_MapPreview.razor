@@ -1,0 +1,124 @@
+﻿@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="map-wrapper shadow-sm rounded border p-3 bg-white">
+    <!-- The physical container MapLibre will inject into -->
+    <div id="@Id" style="width: 100%; height: @(HeightPixels)px;" class="rounded border"></div>
+
+    <div class="mt-3 p-2 bg-light rounded d-flex justify-content-between align-items-center">
+
+        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-2" @onclick="CaptureCurrentBounds">
+            <span>Capture Map Extent</span>
+        </button>
+    </div>
+</div>
+
+@code {
+    // Unique ID ensures we can safely run multiple map components side-by-side without collisions
+    [Parameter] public string Id { get; set; } = $"map-{Guid.NewGuid().ToString("N")[..8]}";
+    [Parameter] public double Longitude { get; set; } = 85.3240; // Default center coordinate
+    [Parameter] public double Latitude { get; set; } = 27.7172;
+    [Parameter] public int Zoom { get; set; } = 12;
+    [Parameter] public int HeightPixels { get; set; } = 500;
+
+    // Callback to pass the coordinates up to your high-res export engine
+    [Parameter] public EventCallback<MapExtent> OnBoundsCaptured { get; set; }
+
+    private IJSObjectReference? _jsModule;
+
+    // OnAfterRenderAsync is the standard lifecycle method where the browser DOM is guaranteed to be ready
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender || _jsModule is null)
+        {
+
+            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./js/mapInterop.js");
+
+            // Execute the initialization function we built in JS
+            await _jsModule.InvokeVoidAsync("initializeMap", Id, Longitude, Latitude, Zoom);
+        }
+    }
+
+    private async Task CaptureCurrentBounds()
+    {
+        if (_jsModule is not null)
+        {
+
+            var bounds = await _jsModule.InvokeAsync<double[]>("getBounds", Id);
+
+            if (bounds != null && bounds.Length == 6)
+            {
+                var extent = new MapExtent
+                {
+                    MapId = Id,
+                    MinLng = bounds[0],
+                    MinLat = bounds[1],
+                    MaxLng = bounds[2],
+                    MaxLat = bounds[3],
+
+                    ContainerWidth = bounds[4],
+                    ContainerHeight = bounds[5]
+
+                };
+
+                await OnBoundsCaptured.InvokeAsync(extent);
+            }
+        }
+    }
+
+
+    public async Task ExecuteHighDpiRender(string mapId, int width, int height, double scale, int dpi, MapExtent extent)
+    {
+        if (_jsModule is not null)
+        {
+            try
+            {
+                string rawDataurl = await _jsModule.InvokeAsync<string>(
+                    "generateHiddenCanvasBridge",
+                    mapId, width, height, scale,
+                    extent.MinLng, extent.MinLat, extent.MaxLng, extent.MaxLat
+                );
+
+                if (!string.IsNullOrEmpty(rawDataurl))
+                {
+                    string base64Data = rawDataurl.Contains(",") ? rawDataurl.Split(",")[1] : rawDataurl;
+                    byte[] imageBytes = Convert.FromBase64String(base64Data);
+
+                    using var streamRef = new DotNetStreamReference(new MemoryStream(imageBytes));
+
+                    await _jsModule.InvokeVoidAsync(
+                        "BlazorDownloadFileBridge",
+                        $"high_res_map_{dpi}dpi_{DateTime.Now:yyyyMMddHHmmss}.jpg",
+                        streamRef
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Module Canvas Bridge Failure: {ex.Message}");
+            }
+        }
+    }
+
+    
+    
+    // Automatically executes when a user leaves the page to clear browser memory leaks
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule is not null)
+        {
+            try
+            {
+                // Execute our custom cleanup JS method
+                await _jsModule.InvokeVoidAsync("disposeMap", Id);
+                await _jsModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Safe to ignore if the browser tab was closed abruptly
+            }
+        }
+    }
+}
