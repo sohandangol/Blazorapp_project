@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WebAppPrinting")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+873a2bcd5548c87cc02f62d5ca335e5b5b2b9d13")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9b0a9ae534c6938bee12ba40bf0d4bb81601858d")]
 [assembly: System.Reflection.AssemblyProductAttribute("WebAppPrinting")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WebAppPrinting")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
